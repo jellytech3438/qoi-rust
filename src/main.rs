@@ -7,26 +7,7 @@ use image::{Pixel, Pixels as IMGPixels, Rgb, RgbImage, Rgba, RgbaImage};
 use qoilib::decoder::{read_u32, read_u8, Decoder};
 use qoilib::encoder::Encoder;
 
-fn write_to_file() {
-    let test = File::create("test.txt").unwrap();
-    let mut buffer = BufWriter::new(test);
-    for i in 0..10 as u8 {
-        buffer.write(&[i]).unwrap();
-    }
-    // buffer.flush().unwrap();
-}
-
-fn read_from_file() {
-    let test = File::open("test.txt").unwrap();
-    let mut buffer = BufReader::new(test);
-    for i in 0..10 {
-        println!("{}", read_u8(&mut buffer).unwrap() as u32);
-    }
-}
-
 fn main() {
-    // write_to_file();
-    // read_from_file();
     test_encode();
     test_decode();
 }
@@ -68,8 +49,7 @@ fn test_decode() {
     let mut decoder = Decoder::new(op_file);
 
     // start decoding
-    let pxs = decoder.decode().unwrap().0;
-    let header = decoder.decode().unwrap().1;
+    let (pxs, header) = decoder.decode().unwrap();
     let img_pxs: Vec<Rgba<u8>> = pxs.iter().map(|p| Rgba(*p)).collect();
 
     let mut op_img = RgbaImage::new(header.width, header.height);

@@ -1,3 +1,5 @@
+use colored::*;
+use image::EncodableLayout;
 use std::{env::current_dir, fmt::Error, io::Write};
 
 use super::{
@@ -37,7 +39,7 @@ impl<'a> Encoder<'a> {
     where
         W: Write,
     {
-        let pxs_write = self.header.width * self.header.height - 1;
+        let pxs_write = self.header.width * self.header.height;
         let mut prevpx = Pixels::start_prev();
         let mut hashmap = PixelHashMap::new();
 
@@ -53,10 +55,12 @@ impl<'a> Encoder<'a> {
         let mut px = Pixels::start_prev();
 
         while cnt < pxs_write {
-            cnt += 1;
-
             // get next px
             px = Pixels::from(self.data[cnt as usize]);
+            let mut c = format!("{}", cnt).on_custom_color(CustomColor::new(px.r, px.g, px.b));
+            println!("{}", c);
+
+            cnt += 1;
 
             // run != 63 and 64
             if px == prevpx {
@@ -69,11 +73,12 @@ impl<'a> Encoder<'a> {
                 if run != 0 {
                     if run == 1 {
                         // run only count once which mean the prev px only find sequentialy one time
-                        buffer.write(((QOI_OP_INDEX << 6) | prevpxindex).to_ne_bytes().as_ref());
+                        buffer.write(((QOI_OP_INDEX << 6) | prevpx.hash()).to_ne_bytes().as_ref());
                     } else {
                         // find a new none sequence px so write run into buffer first
                         buffer.write(((QOI_OP_RUN << 6) | run).to_ne_bytes().as_ref());
                     }
+                    run = 0;
                 }
 
                 // get previous index
@@ -99,20 +104,12 @@ impl<'a> Encoder<'a> {
                     {
                         let bytes_o_l = px.rgb_to_bytes(prevpx, super::DiffType::LUMA);
                         buffer.write([(QOI_OP_LUMA << 6) | bytes_o_l[0], bytes_o_l[1]].as_ref());
-                        // buffer.write(((QOI_OP_LUMA << 6) | bytes_o_l[0]).to_ne_bytes().as_ref());
-                        // buffer.write(bytes_o_l[1].to_ne_bytes().as_ref());
                     } else {
                         buffer.write([(QOI_OP_RGB), (px.r), (px.g), (px.b)].as_ref());
-                        // buffer.write((QOI_OP_RGB).to_ne_bytes().as_ref());
-                        // buffer.write((px.r).to_ne_bytes().as_ref());
-                        // buffer.write((px.g).to_ne_bytes().as_ref());
-                        // buffer.write((px.b).to_ne_bytes().as_ref());
                     }
-
-                    let cur_px_index = px.hash();
-                    hashmap[cur_px_index] = px;
                 }
             }
+            hashmap[px.hash()] = px;
             prevpx = px;
         }
 

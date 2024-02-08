@@ -1,3 +1,4 @@
+use colored::*;
 use std::io::Read;
 use std::mem::MaybeUninit;
 
@@ -38,23 +39,34 @@ where
 
         let mut prevpxindex = prevpx.hash();
 
-        let magic = read_u32(&mut self.reader);
+        println!();
+        println!("DECODE START");
+        let magic = read_u32(&mut self.reader).unwrap();
+        // println!("magic: {:b}", magic);
         let width = read_u32(&mut self.reader).unwrap() as u32;
+        // println!("w: {:b}", width);
         let height = read_u32(&mut self.reader).unwrap() as u32;
-        let header = qoi_header::new(width, height, qoi_channels::Rgb, 0);
+        // println!("h: {:b}", height);
+        let channels = read_u8(&mut self.reader).unwrap() as u8;
+        // println!("channels: {:b}", channels);
+        let colorspace = read_u8(&mut self.reader).unwrap() as u8;
+        // println!("colorspace: {:b}", colorspace);
+        let header = qoi_header::new(width, height, qoi_channels::Rgb, colorspace);
+        println!();
 
-        let pxs_write = width * height - 1;
+        let pxs_write = width * height;
 
         let mut cnt = 0;
-        let mut run = 0;
+        let mut run: i32 = 0;
+        let mut new_run = false;
         let mut rtn_data: Vec<[u8; 4]> = Vec::new();
 
         while cnt < pxs_write {
-            println!("{}", cnt);
             cnt += 1;
             run -= 1;
             if run < 0 {
                 let byte_zero = read_u8(&mut self.reader).unwrap();
+                print!("{:b} ", byte_zero);
                 match byte_zero as u8 {
                     255 => {
                         // RGBA
@@ -63,6 +75,10 @@ where
                         let b = read_u8(&mut self.reader).unwrap() as u8;
                         let a = read_u8(&mut self.reader).unwrap() as u8;
                         rtn_data.push([r, g, b, a]);
+                        println!(
+                            "{}",
+                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                        );
                         prevpx = Pixels::new(r, g, b, a);
                         hashmap[prevpx.hash()] = prevpx;
                     }
@@ -74,32 +90,25 @@ where
                         rtn_data.push([r, g, b, 255]);
                         prevpx = Pixels::new(r, g, b, 255);
                         hashmap[prevpx.hash()] = prevpx;
+                        println!(
+                            "{}",
+                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b))
+                        );
                     }
                     192..=253 => {
                         // RUN
-                        run = byte_zero - 192;
+                        run = (byte_zero - 192) as i32 + 1;
+                        new_run = true;
                     }
                     128..=191 => {
                         // LUMA
-                        let dg = (byte_zero as u8) - 128;
+                        let dg = (byte_zero as u8) - 128 - 32;
                         let next = read_u8(&mut self.reader).unwrap();
                         let dr_dg = next >> 4;
-                        let db_dg = next - dr_dg;
+                        let db_dg = next & 0b0000_1111;
 
-                        let r = prevpx.r + dr_dg + dg;
-                        let g = prevpx.g + dg;
-                        let b = prevpx.b + db_dg + dg;
-
-                        rtn_data.push([r, g, b, 255]);
-                        prevpx = Pixels::new(r, g, b, 255);
-                        hashmap[prevpx.hash()] = prevpx;
-                    }
-                    64..=127 => {
-                        // DIFF
-                        let rgb = byte_zero - 64;
-                        let dr = (rgb & 0b0000_1111) >> 4;
-                        let dg = (rgb & 0b0011_0011) >> 2;
-                        let db = rgb & 0b0011_1100;
+                        let dr = dr_dg + dg - 8;
+                        let db = db_dg + dg - 8;
 
                         let r = prevpx.r + dr;
                         let g = prevpx.g + dg;
@@ -108,6 +117,29 @@ where
                         rtn_data.push([r, g, b, 255]);
                         prevpx = Pixels::new(r, g, b, 255);
                         hashmap[prevpx.hash()] = prevpx;
+                        println!(
+                            "{}",
+                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                        );
+                    }
+                    64..=127 => {
+                        // DIFF
+                        let rgb = byte_zero - 64;
+                        let dr = ((rgb & 0b0011_0000) >> 4) - 2;
+                        let dg = ((rgb & 0b0000_1100) >> 2) - 2;
+                        let db = (rgb & 0b0000_0011) - 2;
+
+                        let r = prevpx.r + dr;
+                        let g = prevpx.g + dg;
+                        let b = prevpx.b + db;
+
+                        rtn_data.push([r, g, b, 255]);
+                        prevpx = Pixels::new(r, g, b, 255);
+                        hashmap[prevpx.hash()] = prevpx;
+                        println!(
+                            "{}",
+                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                        );
                     }
                     0..=63 => {
                         // INDEX
@@ -117,13 +149,91 @@ where
                         rtn_data.push([px.r, px.g, px.b, px.a]);
                         prevpx = px;
                         hashmap[prevpx.hash()] = prevpx;
+                        println!(
+                            "{}",
+                            format!("{}", cnt).on_custom_color(CustomColor::new(px.r, px.g, px.b)),
+                        );
                     }
                 }
             } else {
+                if new_run {
+                    let byte_zero = read_u8(&mut self.reader).unwrap();
+                    match byte_zero as u8 {
+                        255 => {
+                            // RGBA
+                            let r = read_u8(&mut self.reader).unwrap() as u8;
+                            let g = read_u8(&mut self.reader).unwrap() as u8;
+                            let b = read_u8(&mut self.reader).unwrap() as u8;
+                            let a = read_u8(&mut self.reader).unwrap() as u8;
+                            prevpx = Pixels::new(r, g, b, a);
+                            hashmap[prevpx.hash()] = prevpx;
+                        }
+                        254 => {
+                            // RGB
+                            let r = read_u8(&mut self.reader).unwrap() as u8;
+                            let g = read_u8(&mut self.reader).unwrap() as u8;
+                            let b = read_u8(&mut self.reader).unwrap() as u8;
+                            prevpx = Pixels::new(r, g, b, 255);
+                            hashmap[prevpx.hash()] = prevpx;
+                        }
+                        192..=253 => {
+                            // RUN
+                            run = (byte_zero - 192) as i32 + 1;
+                            new_run = true;
+                        }
+                        128..=191 => {
+                            // LUMA
+                            let dg = (byte_zero as u8) - 128 - 32;
+                            let next = read_u8(&mut self.reader).unwrap();
+                            let dr_dg = (next >> 4) - 8;
+                            let db_dg = (next & 0b0000_1111) - 8;
+
+                            let dr = dr_dg + dg;
+                            let db = db_dg + dg;
+
+                            let r = prevpx.r + dr;
+                            let g = prevpx.g + dg;
+                            let b = prevpx.b + db;
+
+                            prevpx = Pixels::new(r, g, b, 255);
+                            hashmap[prevpx.hash()] = prevpx;
+                        }
+                        64..=127 => {
+                            // DIFF
+                            let rgb = byte_zero - 64;
+                            let dr = ((rgb & 0b0011_0000) >> 4) - 2;
+                            let dg = ((rgb & 0b0000_1100) >> 2) - 2;
+                            let db = (rgb & 0b0000_0011) - 2;
+
+                            let r = prevpx.r + dr;
+                            let g = prevpx.g + dg;
+                            let b = prevpx.b + db;
+
+                            prevpx = Pixels::new(r, g, b, 255);
+                            hashmap[prevpx.hash()] = prevpx;
+                        }
+                        0..=63 => {
+                            // INDEX
+                            let index = byte_zero;
+                            let px = hashmap[index];
+
+                            prevpx = px;
+                            hashmap[prevpx.hash()] = prevpx;
+                        }
+                    }
+                    new_run = false;
+                }
                 rtn_data.push([prevpx.r, prevpx.g, prevpx.b, prevpx.a]);
+                println!(
+                    "{}",
+                    format!("{}", cnt)
+                        .on_custom_color(CustomColor::new(prevpx.r, prevpx.g, prevpx.b))
+                );
             }
         }
 
+        println!("length: {}", rtn_data.len());
+        println!("{:?}", rtn_data);
         Ok((rtn_data, header))
     }
 }
