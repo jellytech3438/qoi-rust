@@ -66,7 +66,7 @@ where
             run -= 1;
             if run < 0 {
                 let byte_zero = read_u8(&mut self.reader).unwrap();
-                print!("{:b} ", byte_zero);
+                // print!("{:b} ", byte_zero);
                 match byte_zero as u8 {
                     255 => {
                         // RGBA
@@ -97,7 +97,8 @@ where
                     }
                     192..=253 => {
                         // RUN
-                        run = (byte_zero - 192) as i32 + 1;
+                        run = (byte_zero - 192) as i32;
+                        cnt -= 1;
                         new_run = true;
                     }
                     128..=191 => {
@@ -178,7 +179,8 @@ where
                         }
                         192..=253 => {
                             // RUN
-                            run = (byte_zero - 192) as i32 + 1;
+                            // more than 62
+                            run += (byte_zero - 192) as i32 + 1;
                             new_run = true;
                         }
                         128..=191 => {

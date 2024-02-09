@@ -70,13 +70,16 @@ impl<'a> Encoder<'a> {
                     run = 0;
                 }
             } else {
+                let mut new_run = false;
                 if run != 0 {
+                    new_run = true;
                     if run == 1 {
                         // run only count once which mean the prev px only find sequentialy one time
                         buffer.write(((QOI_OP_INDEX << 6) | prevpx.hash()).to_ne_bytes().as_ref());
                     } else {
                         // find a new none sequence px so write run into buffer first
                         buffer.write(((QOI_OP_RUN << 6) | run).to_ne_bytes().as_ref());
+                        buffer.write(((QOI_OP_INDEX << 6) | prevpx.hash()).to_ne_bytes().as_ref());
                     }
                     run = 0;
                 }
@@ -111,6 +114,18 @@ impl<'a> Encoder<'a> {
             }
             hashmap[px.hash()] = px;
             prevpx = px;
+        }
+
+        // last pixel is run and not write in
+        if run != 0 {
+            if run == 1 {
+                // run only count once which mean the prev px only find sequentialy one time
+                buffer.write(((QOI_OP_INDEX << 6) | prevpx.hash()).to_ne_bytes().as_ref());
+            } else {
+                // find a new none sequence px so write run into buffer first
+                buffer.write(((QOI_OP_RUN << 6) | run).to_ne_bytes().as_ref());
+            }
+            run = 0;
         }
 
         buffer.write(QOI_END.to_ne_bytes().as_ref());
