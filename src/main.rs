@@ -55,7 +55,7 @@ fn test_decode() {
     let mut op_img = RgbaImage::new(header.width, header.height);
     for i in 0..op_img.width() {
         for j in 0..op_img.height() {
-            op_img.put_pixel(i, j, img_pxs[(i * op_img.width() + j) as usize]);
+            op_img.put_pixel(i, j, img_pxs[(j * op_img.width() + i) as usize]);
         }
     }
     op_img.save("img_op.png").unwrap();

@@ -99,11 +99,15 @@ impl<'a> Encoder<'a> {
                     let dr = px.dr(prevpx);
                     let dg = px.dg(prevpx);
                     let db = px.db(prevpx);
+                    let dr_dg = dr.wrapping_sub(dg);
+                    let db_dg = db.wrapping_sub(dg);
 
                     if diff_rgb.contains(&dr) && diff_rgb.contains(&dg) && diff_rgb.contains(&db) {
                         let bytes_o_l = px.rgb_to_bytes(prevpx, super::DiffType::DIFF);
                         buffer.write(((QOI_OP_DIFF << 6) | bytes_o_l[1]).to_ne_bytes().as_ref());
-                    } else if diff_g.contains(&dg) && diff_rb.contains(&dr) && diff_rb.contains(&db)
+                    } else if diff_g.contains(&dg)
+                        && diff_rb.contains(&dr_dg)
+                        && diff_rb.contains(&db_dg)
                     {
                         let bytes_o_l = px.rgb_to_bytes(prevpx, super::DiffType::LUMA);
                         buffer.write([(QOI_OP_LUMA << 6) | bytes_o_l[0], bytes_o_l[1]].as_ref());

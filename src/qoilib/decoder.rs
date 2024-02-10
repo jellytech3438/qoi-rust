@@ -77,7 +77,7 @@ where
                         rtn_data.push([r, g, b, a]);
                         println!(
                             "{}",
-                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                            format!("RGBA {}", cnt).on_custom_color(CustomColor::new(r, g, b)),
                         );
                         prevpx = Pixels::new(r, g, b, a);
                         hashmap[prevpx.hash()] = prevpx;
@@ -92,7 +92,7 @@ where
                         hashmap[prevpx.hash()] = prevpx;
                         println!(
                             "{}",
-                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b))
+                            format!("RGB {}", cnt).on_custom_color(CustomColor::new(r, g, b))
                         );
                     }
                     192..=253 => {
@@ -103,9 +103,9 @@ where
                     }
                     128..=191 => {
                         // LUMA
-                        let dg = (byte_zero as u8) - 128 - 32;
+                        let dg = ((byte_zero & 0b0011_1111) as u8) - 32;
                         let next = read_u8(&mut self.reader).unwrap();
-                        let dr_dg = next >> 4;
+                        let dr_dg = (next & 0b1111_0000) >> 4;
                         let db_dg = next & 0b0000_1111;
 
                         let dr = dr_dg + dg - 8;
@@ -120,7 +120,7 @@ where
                         hashmap[prevpx.hash()] = prevpx;
                         println!(
                             "{}",
-                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                            format!("LUMA {}", cnt,).on_custom_color(CustomColor::new(r, g, b)),
                         );
                     }
                     64..=127 => {
@@ -139,7 +139,7 @@ where
                         hashmap[prevpx.hash()] = prevpx;
                         println!(
                             "{}",
-                            format!("{}", cnt).on_custom_color(CustomColor::new(r, g, b)),
+                            format!("DIFF {}", cnt).on_custom_color(CustomColor::new(r, g, b)),
                         );
                     }
                     0..=63 => {
@@ -152,7 +152,8 @@ where
                         hashmap[prevpx.hash()] = prevpx;
                         println!(
                             "{}",
-                            format!("{}", cnt).on_custom_color(CustomColor::new(px.r, px.g, px.b)),
+                            format!("INDEX {}", cnt)
+                                .on_custom_color(CustomColor::new(px.r, px.g, px.b)),
                         );
                     }
                 }
@@ -228,7 +229,7 @@ where
                 rtn_data.push([prevpx.r, prevpx.g, prevpx.b, prevpx.a]);
                 println!(
                     "{}",
-                    format!("{}", cnt)
+                    format!("RUN {}", cnt)
                         .on_custom_color(CustomColor::new(prevpx.r, prevpx.g, prevpx.b))
                 );
             }

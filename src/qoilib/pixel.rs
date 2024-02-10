@@ -55,11 +55,11 @@ impl Pixels {
                 let dr = (self.dr(prev)) as u8;
                 let dg = (self.dg(prev)) as u8;
                 let db = (self.db(prev)) as u8;
-                let dr_dg = dr - (dg);
-                let db_dg = db - (dg);
+                let dr_dg = dr.wrapping_sub(dg);
+                let db_dg = db.wrapping_sub(dg);
                 [
                     ((dg + 32) & 0b0011_1111),
-                    (((dr_dg + 8) << 4) | (db_dg + 8)),
+                    ((((dr_dg + 8) & 0b0000_1111) << 4) | (db_dg + 8) & 0b0000_1111),
                 ]
             }
         }
